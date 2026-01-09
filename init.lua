@@ -10,14 +10,8 @@ vim.o.smartindent = true
 vim.o.termguicolors = true
 vim.g.mapleader = " "
 vim.o.guifont = "CommitMono Nerd Font:h11:b"
-vim.opt.cmdheight = 0
+vim.opt.cmdheight = 1
 
-
--- Set Bordercolor for Diagnostics popup
-vim.cmd [[ 
-  highlight NormalFloat guibg=#1e1e1e guifg=#404040
-  highlight FloatBorder guibg=#1e1e1e guifg=#dddddd
-]]
 
 -- line wrapping
 vim.o.wrap = true
@@ -37,6 +31,14 @@ if not vim.loop.fs_stat(lazypath) then
 end
 vim.opt.rtp:prepend(lazypath)
 
+
+-- Set Bordercolor for Diagnostics popup
+vim.cmd [[ 
+  highlight NormalFloat guibg=#1e1e1e guifg=#404040
+  highlight FloatBorder guibg=#1e1e1e guifg=#dddddd
+]]
+
+
 -- Specify how the border looks like
 local border = {
     { '┌', 'FloatBorder' },
@@ -49,11 +51,13 @@ local border = {
     { '│', 'FloatBorder' },
 }
 
--- Highlight for border
-vim.cmd [[
-  highlight NormalFloat guibg=#1e1e1e guifg=#404040
-  highlight FloatBorder guibg=#1e1e1e guifg=#dddddd
-]]
+local handlers = {
+  ['textDocument/hover'] =
+    vim.lsp.with(vim.lsp.handlers.hover, { border = border }),
+  ['textDocument/signatureHelp'] =
+    vim.lsp.with(vim.lsp.handlers.signature_help, { border = border }),
+}
+
 
 --Set XAML Filetype to xml
 vim.api.nvim_create_autocmd({"BufNewFile", "BufRead"},{ pattern = {"*.xaml"}, command = "setf xml" })
@@ -105,11 +109,13 @@ require("lazy").setup({
         -- Beispiel: TypeScript
         require("lspconfig").ts_ls.setup({
           capabilities = capabilities,
+          handlers = handlers,
         })
 
         -- Beispiel: Rust
         require("lspconfig").rust_analyzer.setup({
           capabilities = capabilities,
+          handlers = handlers,
         })
 
         -- C# lsp
@@ -125,18 +131,19 @@ require("lazy").setup({
           analyze_open_documents_only = false,
         })
 
+        require("lspconfig").lua_ls.setup({
+            handlers = handlers,
+            -- The rest of the server configuration
+        })
+
+        -- Add the border (handlers) to the pyright server
+        require("lspconfig").pyright.setup({
+            handlers = handlers,
+            capabilities = require("cmp_nvim_lsp").default_capabilities() -- Wichtig für Autocomplete!
+        })
+
 
       end,
-    },
-
-    -- Autocomplete
-    {
-        "hrsh7th/nvim-cmp",
-        dependencies = {
-            "hrsh7th/cmp-nvim-lsp",
-            "hrsh7th/cmp-buffer",
-            "hrsh7th/cmp-path"
-        }
     },
 
     { "rcarriga/nvim-dap-ui", dependencies = {"mfussenegger/nvim-dap", "nvim-neotest/nvim-nio"} },
@@ -164,55 +171,56 @@ require("lazy").setup({
             dap.listeners.before.event_exited["dapui_config"] = function()
                 dapui.close()
             end
-    -- Debugpy Adapter
-    dap.adapters.python = {
-        type = "executable",
-        command = vim.fn.exepath("python3"), -- oder dein venv python
-        args = { "-m", "debugpy.adapter" },
-    }
 
-    -- Remote Adapter
-    dap.adapters.python = {
-        type = "server",
-        host = "192.168.178.71",
-        port = 5678, -- dieser Port MUSS mit debugpy übereinstimmen
-    }
+            -- Debugpy Adapter
+            dap.adapters.python_exec = {
+                type = "executable",
+                command = vim.fn.exepath("python3"), -- oder dein venv python
+                args = { "-m", "debugpy.adapter" },
+            }
 
-    -- Debugpy Config
-    dap.configurations.python = {
-        {
-            type = "python", -- muss genau so heißen wie oben
-            request = "launch",
-            name = "Launch file",
-            program = "${file}", -- aktuelle Datei
-            console = "integratedTerminal",
-            pythonPath = function()
-                local venv_path = os.getenv("VIRTUAL_ENV")
-                if venv_path then
-                    return venv_path .. "/bin/python"
-                else
-                    return vim.fn.exepath("python3")
-                end
-            end,
-        },
-        {
-            type = "python",
-            request = "attach",
-            name = "Remote Attach to Raspberry",
-            connect = {
-                host = "192.168.178.71", -- IP of the remote pc
-                port = 5678,          -- Port of debugpy-Server
+            -- Remote Adapter
+            dap.adapters.python_remote = {
+                type = "server",
+                host = "192.168.178.71",
+                port = 5678, -- dieser Port MUSS mit debugpy übereinstimmen
+            }
+
+            -- Debugpy Config
+            dap.configurations.python = {
+                {
+                    type = "python_exec", -- muss genau so heißen wie oben
+                    request = "launch",
+                    name = "Launch file",
+                    program = "${file}", -- aktuelle Datei
+                    console = "integratedTerminal",
+                    pythonPath = function()
+                        local venv_path = os.getenv("VIRTUAL_ENV")
+                        if venv_path then
+                            return venv_path .. "/bin/python"
+                        else
+                            return vim.fn.exepath("python3")
+                        end
+                    end,
+                },
+                {
+                    type = "python_remote",
+                    request = "attach",
+                    name = "Remote Attach to Raspberry",
+                    connect = {
+                        host = "192.168.178.71", -- IP of the remote pc
+                        port = 5678,          -- Port of debugpy-Server
+                    },
+                    justMyCode = false,
+                    cwd = vim.fn.getcwd(),
+                    pathMappings = {
+                    {
+                        localRoot = vim.fn.getcwd(),       -- dein Projektpfad in Neovim
+                        remoteRoot = "/home/minfive/Eternia/", -- Pfad auf dem Remote-PC
+                      },
+                },
             },
-            justMyCode = false,
-            cwd = vim.fn.getcwd(),
-            pathMappings = {
-            {
-                localRoot = vim.fn.getcwd(),       -- dein Projektpfad in Neovim
-                remoteRoot = "/home/minfive/Eternia/", -- Pfad auf dem Remote-PC
-              },
-            },
-        },
-    }
+        }
 
         end
     },
@@ -281,28 +289,6 @@ require("lazy").setup({
           { desc = "Toggle lsp_lines" }
         )
 
-
-
-        -- Add the border on hover and on signature help popup window
-        local handlers = {
-            ['textDocument/hover'] = vim.lsp.with(vim.lsp.handlers.hover, { border = border }),
-            ['textDocument/signatureHelp'] = vim.lsp.with(vim.lsp.handlers.signature_help, { border = border }),
-        }
-
-        -- Add the border (handlers) to the lua language server
-        lspconfig = require("lspconfig")
-
-        lspconfig.lua_ls.setup({
-            handlers = handlers,
-            -- The rest of the server configuration
-        })
-
-        -- Add the border (handlers) to the pyright server
-        lspconfig.pyright.setup({
-            handlers = handlers,
-            capabilities = require("cmp_nvim_lsp").default_capabilities() -- Wichtig für Autocomplete!
-        })
-
       end,
     },
 
@@ -357,17 +343,8 @@ require("nvim-treesitter.configs").setup({
 -- ==============================
 --   LSP + nvim-cmp Setup
 -- ==============================
---local lspconfig = require("lspconfig")
 local cmp = require("cmp")
---local capabilities = require("cmp_nvim_lsp").default_capabilities()
  
-
--- Python Language Server (Pyright)
---lspconfig.pyright.setup({
---    capabilities = capabilities,
---})
-
-
 -- ==============================
 --   LSP Semantic Highlighting
 -- ==============================
@@ -389,27 +366,44 @@ require("lualine").setup({
     options = { icons_enabled = true },
 })
 
-vim.api.nvim_create_autocmd("VimEnter", {
-    callback = function()
-        vim.o.termguicolors = true
-    end,
-})
-
 
 -- ==============================
 -- Auto cmd 
 -- ==============================
 vim.api.nvim_create_autocmd("CursorHold", {
-    callback = function()
-        vim.diagnostic.open_float(nil, { focus = false })
-    end,
+  callback = function()
+    if #vim.diagnostic.get(0) > 0 then
+      vim.diagnostic.open_float(nil, { focus = false })
+    end
+  end,
+})
+
+
+-- ==============================
+-- Auto Format on save
+-- =============================
+
+vim.api.nvim_create_autocmd("BufWritePre", {
+  callback = function()
+    vim.lsp.buf.format({ async = false })
+  end,
+})
+
+
+-- =============================
+-- Yank Highlight
+-- =============================
+vim.api.nvim_create_autocmd("TextYankPost", {
+  callback = function()
+    vim.highlight.on_yank({ timeout = 150 })
+  end,
 })
 
 
 -- ==============================
 --   Keybindings
 -- ==============================
-vim.keymap.set("n", "<leader>e", ":NvimTreeToggle<CR>", { desc = "Dateibrowser" })
+vim.keymap.set("n", "<leader>e", ":NvimTreeToggle<CR>", { desc = "TreeView" })
 vim.keymap.set("n", "<leader>f", ":Telescope find_files<CR>", { desc = "Dateien suchen" })
 
 -- DAP Keymaps
@@ -424,6 +418,7 @@ vim.keymap.set("n", "<leader>B", function()
 end, { desc = "Debugger: Conditional Breakpoint" })
 vim.keymap.set("n", "<leader>dr", dap.repl.open, { desc = "Debugger: REPL" })
 vim.keymap.set("n", "<leader>dl", dap.run_last, { desc = "Debugger: Run Last" })
+
 -- Remote Debuuger keymap
  vim.keymap.set("n", "<F7>", function()
     require("dap").continue()
@@ -452,7 +447,6 @@ vim.keymap.set("n", "<leader>j", "<cmd>Telescope diagnostics<CR>", { desc = "Sho
 vim.keymap.set("n", "<leader>h", vim.diagnostic.open_float, { desc = "Show diagnostics popup" })
 
 
-
 -- navigate between files with mouse buttons
 vim.keymap.set('', '<X1Mouse>', ':bprevious<CR>', { noremap = true, silent = true })
 vim.keymap.set('', '<X2Mouse>', ':bnext<CR>', { noremap = true, silent = true })
@@ -471,4 +465,11 @@ vim.keymap.set("v", "<S-TAB>", "<gv");
 -- Jump Forwards/Backwards
 vim.keymap.set("n", "<leader>o", "<C-o>", { desc = "Jump backward" })
 vim.keymap.set("n", "<leader>i", "<C-i>", { desc = "Jump forward" })
+
+-- Remapd "d" to delte without move to clipboard:
+vim.keymap.set("v", "d", '"_d', { noremap = true })
+
+-- Keep clipboard conent after paste
+vim.keymap.set("v", "p", '"_dP', { noremap = true, silent = true })
+
 
