@@ -19,6 +19,27 @@ vim.o.breakindent = true
 vim.o.showbreak = string.rep(" ", 3) -- Make it so that long lines wrap smartly
 vim.o.linebreak = true
 
+-- Specify how the border looks like
+local border = {
+  { "╭", "FloatBorder" },
+  { "─", "FloatBorder" },
+  { "╮", "FloatBorder" },
+  { "│", "FloatBorder" },
+  { "╯", "FloatBorder" },
+  { "─", "FloatBorder" },
+  { "╰", "FloatBorder" },
+  { "│", "FloatBorder" },
+}
+
+
+local handlers = {
+  ['textDocument/hover'] =
+    vim.lsp.with(vim.lsp.handlers.hover, { border = border }),
+  ['textDocument/signatureHelp'] =
+    vim.lsp.with(vim.lsp.handlers.signature_help, { border = border }),
+}
+
+
 -- ==============================
 --   lazy.nvim installieren
 -- ==============================
@@ -32,32 +53,6 @@ end
 vim.opt.rtp:prepend(lazypath)
 
 
--- Set Bordercolor for Diagnostics popup
-vim.cmd [[ 
-  highlight NormalFloat guibg=#1e1e1e guifg=#404040
-  highlight FloatBorder guibg=#1e1e1e guifg=#dddddd
-]]
-
-
--- Specify how the border looks like
-local border = {
-    { '┌', 'FloatBorder' },
-    { '─', 'FloatBorder' },
-    { '┐', 'FloatBorder' },
-    { '│', 'FloatBorder' },
-    { '┘', 'FloatBorder' },
-    { '─', 'FloatBorder' },
-    { '└', 'FloatBorder' },
-    { '│', 'FloatBorder' },
-}
-
-local handlers = {
-  ['textDocument/hover'] =
-    vim.lsp.with(vim.lsp.handlers.hover, { border = border }),
-  ['textDocument/signatureHelp'] =
-    vim.lsp.with(vim.lsp.handlers.signature_help, { border = border }),
-}
-
 
 --Set XAML Filetype to xml
 vim.api.nvim_create_autocmd({"BufNewFile", "BufRead"},{ pattern = {"*.xaml"}, command = "setf xml" })
@@ -69,17 +64,30 @@ vim.api.nvim_create_autocmd({"BufNewFile", "BufRead"},{ pattern = {"*.axaml"}, c
 -- ==============================
 require("lazy").setup({
 
-    -- 🎨 VS Code Theme
+    -- VS Code Theme
     {
-        priority = 1000,
-        "Mofiqul/vscode.nvim",
-        config = function()
-            require("vscode").setup({
-                italic_comments = true,
-                transparent = false
-            })
-            require("vscode").load("dark")
-        end
+     priority = 1000,
+     "Mofiqul/vscode.nvim",
+     config = function()
+         require("vscode").setup({
+             italic_comments = true,
+             transparent = true,
+             terminal_colors = true,
+             disable_nvimtree_bg = true
+         })
+         require("vscode").load("dark")
+     local c = require("vscode.colors").get_colors()
+
+     vim.api.nvim_set_hl(0, "NormalFloat", {
+         bg = "#303030",
+         fg = c.vscFront,
+     })
+
+     vim.api.nvim_set_hl(0, "FloatBorder", {
+         bg = c.vscBack,
+         fg = c.vscLineNumber,
+     })
+     end
     },
 
     -- Statusleiste
@@ -121,6 +129,7 @@ require("lazy").setup({
         -- C# lsp
         require("lspconfig").omnisharp.setup({
           capabilities = capabilities,
+          handlers = handlers,
           cmd = { vim.fn.stdpath("data") .. "/mason/bin/OmniSharp" },
           enable_editorconfig_support = true,
           enable_ms_build_load_projects_on_demand = false,
@@ -309,10 +318,10 @@ require("lazy").setup({
               require("luasnip").lsp_expand(args.body)
             end,
           },
-          window = {
-                completion = cmp.config.window.bordered(),
-                documentation = cmp.config.window.bordered(),
-                },
+            window = {
+              completion = cmp.config.window.bordered(border),
+              documentation = cmp.config.window.bordered(border),
+            },
           mapping = cmp.mapping.preset.insert({
             ["<C-Space>"] = cmp.mapping.complete(),
             ["<CR>"] = cmp.mapping.confirm({ select = true }),
