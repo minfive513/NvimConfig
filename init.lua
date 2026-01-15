@@ -73,9 +73,12 @@ require("lazy").setup({
      config = function()
          require("vscode").setup({
              italic_comments = true,
-             transparent = true,
+             transparent = false,
              terminal_colors = true,
-             disable_nvimtree_bg = true
+             disable_nvimtree_bg = false,
+             color_overrides = {
+                vscBack = "#202020"
+            }
          })
          require("vscode").load("dark")
      local c = require("vscode.colors").get_colors()
