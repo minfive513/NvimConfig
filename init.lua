@@ -11,13 +11,15 @@ vim.o.termguicolors = true
 vim.g.mapleader = " "
 vim.o.guifont = "CommitMono Nerd Font:h11:b"
 vim.opt.cmdheight = 1
-
+vim.o.winborder = "single"
 
 -- line wrapping
 vim.o.wrap = true
 vim.o.breakindent = true
 vim.o.showbreak = string.rep(" ", 3) -- Make it so that long lines wrap smartly
 vim.o.linebreak = true
+vim.opt.clipboard = "unnamedplus"
+
 
 -- Specify how the border looks like
 local border = {
@@ -79,7 +81,7 @@ require("lazy").setup({
      local c = require("vscode.colors").get_colors()
 
      vim.api.nvim_set_hl(0, "NormalFloat", {
-         bg = "#303030",
+         bg = c.vscBack,
          fg = c.vscFront,
      })
 
@@ -108,6 +110,11 @@ require("lazy").setup({
     -- Mason-LSPConfig: verbindet Mason mit nvim-lspconfig
     { "williamboman/mason-lspconfig.nvim", config = true },
 
+    {
+      "pmizio/typescript-tools.nvim",
+      dependencies = { "nvim-lua/plenary.nvim" },
+    },
+
 
     -- LSP Support
     { "neovim/nvim-lspconfig",
@@ -115,8 +122,7 @@ require("lazy").setup({
         local capabilities = require("cmp_nvim_lsp").default_capabilities()
 
         -- Beispiel: TypeScript
-        require("lspconfig").ts_ls.setup({
-          capabilities = capabilities,
+        require("typescript-tools").setup({
           handlers = handlers,
         })
 
@@ -343,7 +349,7 @@ require("lazy").setup({
 --   Treesitter Setup
 -- ==============================
 require("nvim-treesitter.configs").setup({
-    ensure_installed = { "python", "lua", "bash", "json", "yaml", "c_sharp", "xml" },
+    ensure_installed = { "python", "lua", "bash", "json", "yaml", "c_sharp", "xml", "typescript", "javascript", "tsx", "html", "css", "bash" },
     highlight = { enable = true },
     indent = { enable = true },
 })
