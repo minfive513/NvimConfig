@@ -10,7 +10,7 @@ vim.o.smartindent = true
 vim.o.termguicolors = true
 vim.g.mapleader = " "
 vim.o.guifont = "CommitMono Nerd Font:h11:b"
-vim.opt.cmdheight = 1
+vim.opt.cmdheight = 2
 vim.o.winborder = "single"
 
 -- line wrapping
@@ -19,6 +19,17 @@ vim.o.breakindent = true
 vim.o.showbreak = string.rep(" ", 3) -- Make it so that long lines wrap smartly
 vim.o.linebreak = true
 vim.opt.clipboard = "unnamedplus"
+
+
+vim.o.updatetime = 250  -- Schnelleres CursorHold (war vorher default 4000ms)
+vim.o.timeoutlen = 300  -- Schnellere Keymap-Timeouts
+vim.opt.undofile = true -- Persistent undo history
+vim.opt.swapfile = false -- Kein Swap-File für bessere Performance
+
+-- NEU: Bessere Suche
+vim.opt.ignorecase = true
+vim.opt.smartcase = true
+vim.opt.hlsearch = false -- Kein dauerhaftes Highlighting nach Suche
 
 
 -- Specify how the border looks like
@@ -57,9 +68,8 @@ vim.opt.rtp:prepend(lazypath)
 
 
 --Set XAML Filetype to xml
-vim.api.nvim_create_autocmd({"BufNewFile", "BufRead"},{ pattern = {"*.xaml"}, command = "setf xml" })
+vim.api.nvim_create_autocmd({"BufNewFile", "BufRead"},{ pattern = {"*.xaml", "*.axaml"}, command = "setf xml" })
 
-vim.api.nvim_create_autocmd({"BufNewFile", "BufRead"},{ pattern = {"*.axaml"}, command = "setf xml" })
 
 -- ==============================
 --   Plugins
@@ -73,7 +83,7 @@ require("lazy").setup({
      config = function()
          require("vscode").setup({
              italic_comments = true,
-             transparent = false,
+             transparent = true,
              terminal_colors = true,
              disable_nvimtree_bg = false,
              color_overrides = {
@@ -92,14 +102,60 @@ require("lazy").setup({
          bg = c.vscBack,
          fg = c.vscLineNumber,
      })
+        -- Globale Popup-Farben
+        vim.api.nvim_set_hl(0, "NormalFloat", {
+          bg = "#1E1E1E",  -- Dunkler als dein Haupthintergrund
+          fg = c.vscFront,
+        })
+
+        vim.api.nvim_set_hl(0, "FloatBorder", {
+          bg = "#1E1E1E",  -- Gleich wie NormalFloat
+          fg = "#569CD6",  -- Blaue Border
+        })
+
+        -- Telescope spezifisch
+        vim.api.nvim_set_hl(0, "TelescopeNormal", { bg = "#1F1F1F" })
+        vim.api.nvim_set_hl(0, "TelescopeBorder", { bg = "#1E1E1E", fg = "#569CD6" })
+
+        -- nvim-tree
+        vim.api.nvim_set_hl(0, "NvimTreeNormal", { bg = "#1A1A1A" })
+
+        -- Completion Menu
+        vim.api.nvim_set_hl(0, "Pmenu", { bg = "#252526", fg = c.vscFront })
+        vim.api.nvim_set_hl(0, "PmenuSel", { bg = "#094771", fg = "#FFFFFF", bold = true })
      end
     },
 
     -- Statusleiste
-    { "nvim-lualine/lualine.nvim", config = true },
+    { 
+      "nvim-lualine/lualine.nvim",
+      opts = {
+        options = { icons_enabled = true },
+      }
+    },
 
     -- Syntax Highlighting
-    { "nvim-treesitter/nvim-treesitter", build = ":TSUpdate" },
+    { "nvim-treesitter/nvim-treesitter", build = ":TSUpdate", config = function()
+        require("nvim-treesitter.configs").setup({
+          ensure_installed = { "python", "lua", "bash", "json", "yaml", "c_sharp", "xml", "typescript", "javascript", "tsx", "html", "css" },
+          highlight = { enable = true },
+          indent = { enable = true },
+          -- NEU: Inkrementelle Selektion
+          incremental_selection = {
+            enable = true,
+            keymaps = {
+              init_selection = "<C-space>",
+              node_incremental = "<C-space>",
+              scope_incremental = false,
+              node_decremental = "<bs>",
+            },
+          },
+        })
+      end
+    },
+
+    -- Web dev Icons
+    { "nvim-tree/nvim-web-devicons", lazy = true },
 
     -- Dateibrowser
     { "nvim-tree/nvim-tree.lua", config = true },
@@ -118,6 +174,124 @@ require("lazy").setup({
       dependencies = { "nvim-lua/plenary.nvim" },
     },
 
+    -- Shows intended vertical lines
+    {
+      "lukas-reineke/indent-blankline.nvim",
+      main = "ibl",
+      opts = {
+        indent = { char = "│" },
+        scope = { enabled = false },
+      }
+    },
+
+    -- Smooth scrolling
+    {
+      "karb94/neoscroll.nvim",
+      opts = {
+        easing_function = "quadratic",
+      }
+    },
+
+    -- Better Notifications
+    {
+      "rcarriga/nvim-notify",
+      config = function()
+        require("notify").setup({
+                background_color= "#202020"
+            })
+        vim.notify = require("notify")
+
+      end
+    },
+
+    -- Colored Brackets
+    {
+      "HiPhish/rainbow-delimiters.nvim",
+      config = function()
+        -- Definiere die Farben für die Klammern
+        vim.api.nvim_set_hl(0, 'RainbowDelimiterRed', { fg = '#E06C75' })
+        vim.api.nvim_set_hl(0, 'RainbowDelimiterYellow', { fg = '#E5C07B' })
+        vim.api.nvim_set_hl(0, 'RainbowDelimiterBlue', { fg = '#61AFEF' })
+        vim.api.nvim_set_hl(0, 'RainbowDelimiterOrange', { fg = '#D19A66' })
+        vim.api.nvim_set_hl(0, 'RainbowDelimiterGreen', { fg = '#98C379' })
+        vim.api.nvim_set_hl(0, 'RainbowDelimiterViolet', { fg = '#C678DD' })
+        vim.api.nvim_set_hl(0, 'RainbowDelimiterCyan', { fg = '#56B6C2' })
+            
+        require("rainbow-delimiters.setup").setup()
+      end
+    },
+
+    -- Color preview
+    {
+          "NvChad/nvim-colorizer.lua",
+          opts = {
+            user_default_options = {
+              names = false, -- disable named colors like "Blue"
+            }
+          }
+        },
+
+        {
+          "folke/noice.nvim",
+          event = "VeryLazy",
+          dependencies = {
+            "MunifTanjim/nui.nvim",
+            "rcarriga/nvim-notify",
+          },
+          opts = {
+            cmdline = {
+              enabled = true,
+              view = "cmdline_popup", -- Popup statt unten
+              format = {
+                cmdline = { pattern = "^:", icon = "", lang = "vim" },
+                search_down = { kind = "search", pattern = "^/", icon = " ", lang = "regex" },
+                search_up = { kind = "search", pattern = "^%?", icon = " ", lang = "regex" },
+                filter = { pattern = "^:%s*!", icon = "$", lang = "bash" },
+                lua = { pattern = { "^:%s*lua%s+", "^:%s*lua%s*=%s*", "^:%s*=%s*" }, icon = "", lang = "lua" },
+                help = { pattern = "^:%s*he?l?p?%s+", icon = "" },
+              },
+            },
+            popupmenu = {
+              enabled = true,
+              backend = "cmp", -- oder "cmp" wenn du cmp bevorzugst
+            },
+
+
+            views = {
+              cmdline_popup = {
+                position = {
+                  row = "50%", -- Mittig im Bildschirm
+                  col = "50%",
+                },
+                size = {
+                  width = 60,
+                  height = "auto",
+                },
+                border = {
+                  style = "rounded",
+                  padding = { 0, 1 },
+                },
+                win_options = {
+                  winhighlight = "NormalFloat:NormalFloat,FloatBorder:FloatBorder",
+                },
+              },
+            },
+            lsp = {
+              override = {
+                ["vim.lsp.util.convert_input_to_markdown_lines"] = true,
+                ["vim.lsp.util.stylize_markdown"] = true,
+                ["cmp.entry.get_documentation"] = true,
+              },
+            },
+            presets = {
+              bottom_search = false, -- Suche auch als Popup
+              command_palette = true, -- Command-Palette Style
+              long_message_to_split = true,
+              inc_rename = false,
+              lsp_doc_border = true,
+            },
+          },
+        },
 
     -- LSP Support
     { "neovim/nvim-lspconfig",
@@ -127,12 +301,13 @@ require("lazy").setup({
         -- Beispiel: TypeScript
         require("typescript-tools").setup({
           handlers = handlers,
-        })
-
-        -- Beispiel: Rust
-        require("lspconfig").rust_analyzer.setup({
-          capabilities = capabilities,
-          handlers = handlers,
+          settings = {
+            -- NEU: Bessere TypeScript-Einstellungen
+            tsserver_file_preferences = {
+              includeInlayParameterNameHints = "all",
+              includeInlayFunctionParameterTypeHints = true,
+            },
+          },
         })
 
         -- C# lsp
@@ -152,6 +327,21 @@ require("lazy").setup({
         require("lspconfig").lua_ls.setup({
             handlers = handlers,
             -- The rest of the server configuration
+            capabilities = capabilities,
+            settings = {
+            Lua = {
+              diagnostics = {
+                globals = { "vim" }  -- Verhindert Warnung bei "vim" global
+              },
+              workspace = {
+                library = vim.api.nvim_get_runtime_file("", true),
+                checkThirdParty = false,
+              },
+              telemetry = {
+                enable = false,
+              },
+            },
+    	  },
         })
 
         -- Add the border (handlers) to the pyright server
@@ -345,6 +535,34 @@ require("lazy").setup({
         })
       end,
     },
+
+    -- NEU: Autopairs - automatische Klammern
+    {
+      "windwp/nvim-autopairs",
+      event = "InsertEnter",
+      opts = {}
+    },
+
+    -- NEU: Git-Integration
+    {
+      "lewis6991/gitsigns.nvim",
+      opts = {
+        signs = {
+          add = { text = "+" },
+          change = { text = "~" },
+          delete = { text = "_" },
+          topdelete = { text = "‾" },
+          changedelete = { text = "~" },
+        },
+      }
+    },
+
+    -- NEU: Bessere Kommentare
+    {
+      "numToStr/Comment.nvim",
+      opts = {},
+      lazy = false,
+    },
 })
 
 
@@ -491,3 +709,14 @@ vim.keymap.set("v", "d", '"_d', { noremap = true })
 vim.keymap.set("v", "p", '"_dP', { noremap = true, silent = true })
 
 
+-- NEU: ESC beendet Terminal-Mode
+vim.keymap.set("t", "<Esc>", "<C-\\><C-n>", { desc = "Exit terminal mode" })
+
+-- NEU: Window-Navigation mit Ctrl+hjkl
+vim.keymap.set("n", "<C-h>", "<C-w>h", { desc = "Window left" })
+vim.keymap.set("n", "<C-j>", "<C-w>j", { desc = "Window down" })
+vim.keymap.set("n", "<C-k>", "<C-w>k", { desc = "Window up" })
+vim.keymap.set("n", "<C-l>", "<C-w>l", { desc = "Window right" })
+
+-- NEU: Schnelleres Speichern
+vim.keymap.set("n", "<leader>w", ":w<CR>", { desc = "Save file" })
