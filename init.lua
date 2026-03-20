@@ -10,7 +10,7 @@ vim.o.smartindent = true
 vim.o.termguicolors = true
 vim.g.mapleader = " "
 vim.o.guifont = "CommitMono Nerd Font:h11:b"
-vim.opt.cmdheight = 2
+vim.opt.cmdheight = 1
 vim.o.winborder = "single"
 
 -- line wrapping
@@ -192,17 +192,7 @@ require("lazy").setup({
       }
     },
 
-    -- Better Notifications
-    {
-      "rcarriga/nvim-notify",
-      config = function()
-        require("notify").setup({
-                background_color= "#202020"
-            })
-        vim.notify = require("notify")
 
-      end
-    },
 
     -- Colored Brackets
     {
@@ -231,129 +221,64 @@ require("lazy").setup({
           }
         },
 
-        {
-          "folke/noice.nvim",
-          event = "VeryLazy",
-          dependencies = {
-            "MunifTanjim/nui.nvim",
-            "rcarriga/nvim-notify",
-          },
-          opts = {
-            cmdline = {
-              enabled = true,
-              view = "cmdline_popup", -- Popup statt unten
-              format = {
-                cmdline = { pattern = "^:", icon = "", lang = "vim" },
-                search_down = { kind = "search", pattern = "^/", icon = " ", lang = "regex" },
-                search_up = { kind = "search", pattern = "^%?", icon = " ", lang = "regex" },
-                filter = { pattern = "^:%s*!", icon = "$", lang = "bash" },
-                lua = { pattern = { "^:%s*lua%s+", "^:%s*lua%s*=%s*", "^:%s*=%s*" }, icon = "", lang = "lua" },
-                help = { pattern = "^:%s*he?l?p?%s+", icon = "" },
-              },
-            },
-            popupmenu = {
-              enabled = true,
-              backend = "cmp", -- oder "cmp" wenn du cmp bevorzugst
-            },
-
-
-            views = {
-              cmdline_popup = {
-                position = {
-                  row = "50%", -- Mittig im Bildschirm
-                  col = "50%",
-                },
-                size = {
-                  width = 60,
-                  height = "auto",
-                },
-                border = {
-                  style = "rounded",
-                  padding = { 0, 1 },
-                },
-                win_options = {
-                  winhighlight = "NormalFloat:NormalFloat,FloatBorder:FloatBorder",
-                },
-              },
-            },
-            lsp = {
-              override = {
-                ["vim.lsp.util.convert_input_to_markdown_lines"] = true,
-                ["vim.lsp.util.stylize_markdown"] = true,
-                ["cmp.entry.get_documentation"] = true,
-              },
-            },
-            presets = {
-              bottom_search = false, -- Suche auch als Popup
-              command_palette = true, -- Command-Palette Style
-              long_message_to_split = true,
-              inc_rename = false,
-              lsp_doc_border = true,
-            },
-          },
-        },
 
     -- LSP Support
-    { "neovim/nvim-lspconfig",
-      config = function()
-        local capabilities = require("cmp_nvim_lsp").default_capabilities()
+{ "neovim/nvim-lspconfig",
+  config = function()
+    local capabilities = require("cmp_nvim_lsp").default_capabilities()
 
-        -- Beispiel: TypeScript
-        require("typescript-tools").setup({
-          handlers = handlers,
-          settings = {
-            -- NEU: Bessere TypeScript-Einstellungen
-            tsserver_file_preferences = {
-              includeInlayParameterNameHints = "all",
-              includeInlayFunctionParameterTypeHints = true,
-            },
+    -- TypeScript bleibt gleich (typescript-tools nutzt eigene API)
+    require("typescript-tools").setup({
+      handlers = handlers,
+      settings = {
+        tsserver_file_preferences = {
+          includeInlayParameterNameHints = "all",
+          includeInlayFunctionParameterTypeHints = true,
+        },
+      },
+    })
+
+    -- C# (OmniSharp)
+    vim.lsp.config("omnisharp", {
+      capabilities = capabilities,
+      handlers = handlers,
+      cmd = { vim.fn.stdpath("data") .. "/mason/bin/OmniSharp" },
+      enable_editorconfig_support = true,
+      enable_ms_build_load_projects_on_demand = false,
+      enable_roslyn_analyzers = true,
+      organize_imports_on_format = true,
+      enable_import_completion = true,
+      sdk_include_prereleases = true,
+      analyze_open_documents_only = false,
+    })
+    vim.lsp.enable("omnisharp")
+
+    -- Lua
+    vim.lsp.config("lua_ls", {
+      handlers = handlers,
+      capabilities = capabilities,
+      settings = {
+        Lua = {
+          diagnostics = { globals = { "vim" } },
+          workspace = {
+            library = vim.api.nvim_get_runtime_file("", true),
+            checkThirdParty = false,
           },
-        })
+          telemetry = { enable = false },
+        },
+      },
+    })
+    vim.lsp.enable("lua_ls")
 
-        -- C# lsp
-        require("lspconfig").omnisharp.setup({
-          capabilities = capabilities,
-          handlers = handlers,
-          cmd = { vim.fn.stdpath("data") .. "/mason/bin/OmniSharp" },
-          enable_editorconfig_support = true,
-          enable_ms_build_load_projects_on_demand = false,
-          enable_roslyn_analyzers = true,
-          organize_imports_on_format = true,
-          enable_import_completion = true,
-          sdk_include_prereleases = true,
-          analyze_open_documents_only = false,
-        })
+    -- Python
+    vim.lsp.config("pyright", {
+      handlers = handlers,
+      capabilities = capabilities,
+    })
+    vim.lsp.enable("pyright")
 
-        require("lspconfig").lua_ls.setup({
-            handlers = handlers,
-            -- The rest of the server configuration
-            capabilities = capabilities,
-            settings = {
-            Lua = {
-              diagnostics = {
-                globals = { "vim" }  -- Verhindert Warnung bei "vim" global
-              },
-              workspace = {
-                library = vim.api.nvim_get_runtime_file("", true),
-                checkThirdParty = false,
-              },
-              telemetry = {
-                enable = false,
-              },
-            },
-    	  },
-        })
-
-        -- Add the border (handlers) to the pyright server
-        require("lspconfig").pyright.setup({
-            handlers = handlers,
-            capabilities = require("cmp_nvim_lsp").default_capabilities() -- Wichtig für Autocomplete!
-        })
-
-
-      end,
-    },
-
+  end,
+},
     { "rcarriga/nvim-dap-ui", dependencies = {"mfussenegger/nvim-dap", "nvim-neotest/nvim-nio"} },
 
     -- Debugger (DAP)
@@ -609,11 +534,13 @@ require("lualine").setup({
 vim.api.nvim_create_autocmd("CursorHold", {
   callback = function()
     if #vim.diagnostic.get(0) > 0 then
-      vim.diagnostic.open_float(nil, { focus = false })
+      vim.diagnostic.open_float(nil, {
+        focus = false,
+        close_events = { "BufLeave", "CursorMoved", "InsertEnter", "FocusLost" },
+      })
     end
   end,
 })
-
 
 -- ==============================
 -- Auto Format on save
@@ -719,4 +646,4 @@ vim.keymap.set("n", "<C-k>", "<C-w>k", { desc = "Window up" })
 vim.keymap.set("n", "<C-l>", "<C-w>l", { desc = "Window right" })
 
 -- NEU: Schnelleres Speichern
-vim.keymap.set("n", "<leader>w", ":w<CR>", { desc = "Save file" })
+vim.keymap.set("n", "<leader>w", ":wa<CR>", { desc = "Save file" })
